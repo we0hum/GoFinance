@@ -10,12 +10,20 @@ import (
 	_ "github.com/lib/pq"
 )
 
+func mustGetenv(key string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		log.Fatalf("переменная %s не найдена в окружении", key)
+	}
+	return value
+}
+
 func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️  Файл .env не найден")
 	}
 
-	connStr := os.Getenv("DATABASE_URL")
+	connStr := mustGetenv("DATABASE_URL")
 
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
