@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
     category_id INT REFERENCES categories(id) ON DELETE CASCADE,
@@ -5,3 +6,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     note TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- +goose Down
+DROP TABLE IF EXISTS transactions;
