@@ -6,7 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"github.com/pressly/goose"
+	"github.com/pressly/goose/v3"
 )
 
 func main() {
@@ -20,6 +20,8 @@ func main() {
 	}
 	defer db.Close()
 
+	goose.SetDialect("postgres")
+
 	dir := "migrations"
 
 	if len(os.Args) < 2 {
@@ -27,8 +29,21 @@ func main() {
 	}
 	cmd := os.Args[1]
 
-	if err := goose.Run(cmd, db, dir); err != nil {
-		log.Fatalf("Ошибка при выполнении миграции: %v", err)
+	switch cmd {
+	case "up":
+		err = goose.Up(db, dir)
+	case "down":
+		err = goose.Down(db, dir)
+	case "status":
+		err = goose.Status(db, dir)
+	case "redo":
+		err = goose.Redo(db, dir)
+	default:
+		log.Fatalf("Неизвестная команда: %s", cmd)
+	}
+
+	if err != nil {
+		log.Fatalf("Ошибка миграции: %v", err)
 	}
 
 	log.Println("✅ Команда успешно выполнена:", cmd)

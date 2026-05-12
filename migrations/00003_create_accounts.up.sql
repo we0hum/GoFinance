@@ -4,6 +4,3 @@ CREATE TABLE IF NOT EXISTS accounts (
     name TEXT NOT NULL,
     balance NUMERIC(10,2) NOT NULL DEFAULT 0
 );
-
--- +goose Down
-DROP TABLE IF EXISTS accounts;

@@ -89,49 +89,40 @@ func (h *TransactionHandlers) ListTransactions(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	categoryIdStr := r.URL.Query().Get("category_id")
 	limitStr := r.URL.Query().Get("limit")
 
-	var (
-		categoryID int
-		limit      int
-		err        error
-		txs        []models.Transaction
-	)
-
-	if categoryIdStr != "" {
-		categoryID, err = strconv.Atoi(categoryIdStr)
-		if err != nil {
-			http.Error(w, "", http.StatusBadRequest)
-			return
-		}
-	}
+	limit := 10
 
 	if limitStr != "" {
-		limit, err = strconv.Atoi(limitStr)
+		l, err := strconv.Atoi(limitStr)
 		if err != nil {
-			http.Error(w, "", http.StatusBadRequest)
+			http.Error(w, "invalid limit", http.StatusBadRequest)
 			return
 		}
-	}
-	if limit == 0 {
-		limit = 10
+
+		limit = l
 	}
 
+	filter := db.TransactionFilter{
+		Limit: limit,
+	}
+
+	categoryIdStr := r.URL.Query().Get("category_id")
+
 	if categoryIdStr != "" {
-		txs, err = h.repo.ListByCategory(r.Context(), models.Transaction{
-			CategoryID: categoryID,
-		})
+		id, err := strconv.Atoi(categoryIdStr)
 		if err != nil {
-			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+			http.Error(w, "invalid category_id", http.StatusBadRequest)
 			return
 		}
-	} else {
-		txs, err = h.repo.List(r.Context(), categoryID, limit)
-		if err != nil {
-			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+
+		filter.CategoryID = &id
+	}
+
+	txs, err := h.repo.List(r.Context(), filter)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

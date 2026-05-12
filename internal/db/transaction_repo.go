@@ -4,6 +4,8 @@ import (
 	"GoFinance/internal/models"
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -88,31 +90,39 @@ func (r *TransactionRepo) CreateWithAccountUpdate(ctx context.Context, t models.
 	return tr, nil
 }
 
-func (r *TransactionRepo) List(ctx context.Context, categoryID, limit int) ([]models.Transaction, error) {
+func (r *TransactionRepo) List(ctx context.Context, filter TransactionFilter) ([]models.Transaction, error) {
+	query := `
+		SELECT id, category_id, amount, note, created_at
+		FROM transactions	
+	`
+
+	args := []interface{}{}
+	conditions := []string{}
+
+	if filter.CategoryID != nil {
+		args = append(args, *filter.CategoryID)
+
+		conditions = append(conditions, fmt.Sprintf("category_id = $%d", len(args)))
+	}
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	args = append(args, filter.Limit)
+
+	query += fmt.Sprintf(
+		" ORDER BY created_at DESC LIMIT $%d",
+		len(args),
+	)
+
 	var txs []models.Transaction
 
-	query := `
-        SELECT id, category_id, amount, note, created_at
-        FROM transactions
-        WHERE ($1 = 0 OR category_id = $1)
-        ORDER BY created_at DESC
-		LIMIT $2; 
-    `
+	err := r.db.SelectContext(ctx, &txs, query, args...)
 
-	err := r.db.SelectContext(ctx, &txs, query, categoryID, limit)
+	if err != nil {
+		return nil, err
+	}
 
 	return txs, err
-}
-
-func (r *TransactionRepo) ListByCategory(ctx context.Context, t models.Transaction) ([]models.Transaction, error) {
-	var tx []models.Transaction
-
-	err := r.db.SelectContext(ctx, &tx, `
-        SELECT id, category_id, amount, note, created_at
-        FROM transactions
-        WHERE category_id = $1
-        ORDER BY created_at DESC;
-    `, t.CategoryID)
-
-	return tx, err
 }

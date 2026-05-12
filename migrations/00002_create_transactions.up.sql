@@ -6,6 +6,3 @@ CREATE TABLE IF NOT EXISTS transactions (
     note TEXT,
     created_at TIMESTAMP DEFAULT NOW()
 );
-
--- +goose Down
-DROP TABLE IF EXISTS transactions;
