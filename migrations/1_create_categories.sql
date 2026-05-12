@@ -5,3 +5,6 @@ CREATE TABLE IF NOT EXISTS categories (
     type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- +goose Down
+DROP TABLE IF EXISTS categories;
