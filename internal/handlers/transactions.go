@@ -35,7 +35,11 @@ func (h *TransactionHandlers) CreateTransaction(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	tx, err := h.repo.Create(r.Context(), in.CategoryID, in.Amount, in.Note)
+	tr, err := h.repo.Create(r.Context(), models.Transaction{
+		CategoryID: in.CategoryID,
+		Amount:     in.Amount,
+		Note:       in.Note,
+	})
 	if err != nil {
 		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -43,7 +47,40 @@ func (h *TransactionHandlers) CreateTransaction(w http.ResponseWriter, r *http.R
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(tx)
+	json.NewEncoder(w).Encode(tr)
+}
+
+func (h *TransactionHandlers) CreateTransactionWithAccount(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var in struct {
+		CategoryID int     `json:"category_id"`
+		AccountID  int     `json:"account_id"`
+		Amount     float64 `json:"amount"`
+		Note       string  `json:"note"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	tr, err := h.repo.CreateWithAccountUpdate(r.Context(), models.Transaction{
+		CategoryID: in.CategoryID,
+		Amount:     in.Amount,
+		Note:       in.Note,
+	}, in.AccountID)
+	if err != nil {
+		http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(tr)
 }
 
 func (h *TransactionHandlers) ListTransactions(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +109,9 @@ func (h *TransactionHandlers) ListTransactions(w http.ResponseWriter, r *http.Re
 	)
 
 	if categoryIdStr != "" {
-		txs, err = h.repo.ListByCategory(r.Context(), categoryId)
+		txs, err = h.repo.ListByCategory(r.Context(), models.Transaction{
+			CategoryID: categoryId,
+		})
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return

@@ -35,18 +35,20 @@ func main() {
 		}
 	})
 
-	txs := handlers.NewTransactionHandlers(dbase)
+	trans := handlers.NewTransactionHandlers(dbase)
 
 	http.HandleFunc("/transactions", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
-			txs.ListTransactions(w, r)
+			trans.ListTransactions(w, r)
 		case http.MethodPost:
-			txs.CreateTransaction(w, r)
+			trans.CreateTransaction(w, r)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	})
+
+	http.HandleFunc("/transactions/with-account", trans.CreateTransactionWithAccount)
 
 	port := os.Getenv("PORT")
 
