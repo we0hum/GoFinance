@@ -3,6 +3,7 @@ package db
 import (
 	"GoFinance/internal/models"
 	"context"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -46,6 +47,8 @@ func (r *TransactionRepo) CreateWithAccountUpdate(ctx context.Context, t models.
 		return models.Transaction{}, err
 	}
 
+	defer tx.Rollback()
+
 	insertQuery := `
         INSERT INTO transactions (category_id, amount, note)
         VALUES ($1, $2, $3)
@@ -53,8 +56,7 @@ func (r *TransactionRepo) CreateWithAccountUpdate(ctx context.Context, t models.
     `
 
 	var tr models.Transaction
-	if err := r.db.GetContext(ctx, &tr, insertQuery, t.CategoryID, t.Amount, t.Note); err != nil {
-		tx.Rollback()
+	if err := tx.GetContext(ctx, &tr, insertQuery, t.CategoryID, t.Amount, t.Note); err != nil {
 		return models.Transaction{}, err
 	}
 
@@ -64,9 +66,19 @@ func (r *TransactionRepo) CreateWithAccountUpdate(ctx context.Context, t models.
 		WHERE id = $2
 	`
 
-	if _, err := tx.ExecContext(ctx, updateQuery, t.Amount, accountID); err != nil {
-		tx.Rollback()
+	result, err := tx.ExecContext(ctx, updateQuery, t.Amount, accountID)
+
+	if err != nil {
 		return models.Transaction{}, err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return models.Transaction{}, err
+	}
+
+	if rows == 0 {
+		return models.Transaction{}, errors.New("account not found")
 	}
 
 	if err := tx.Commit(); err != nil {
