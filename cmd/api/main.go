@@ -1,6 +1,7 @@
 package main
 
 import (
+	"GoFinance/internal/middleware"
 	"fmt"
 	"log"
 	"net/http"
@@ -22,9 +23,11 @@ func main() {
 
 	defer dbase.Close()
 
+	mux := http.NewServeMux()
+
 	cats := handlers.NewCategoryHandlers(dbase)
 
-	http.HandleFunc("/categories", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/categories", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			cats.ListCategories(w, r)
@@ -37,7 +40,7 @@ func main() {
 
 	trans := handlers.NewTransactionHandlers(dbase)
 
-	http.HandleFunc("/transactions", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/transactions", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			trans.ListTransactions(w, r)
@@ -48,7 +51,7 @@ func main() {
 		}
 	})
 
-	http.HandleFunc("/transactions/with-account", trans.CreateTransactionWithAccount)
+	mux.HandleFunc("/transactions/with-account", trans.CreateTransactionWithAccount)
 
 	port := os.Getenv("PORT")
 
@@ -56,7 +59,11 @@ func main() {
 		port = "8080"
 	}
 
+	handler := middleware.RecoveryMiddleware(
+		middleware.LoggingMiddleware(mux),
+	)
+
 	fmt.Printf("🚀 Server running on http://localhost:%s\n", port)
 
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+port, handler))
 }
