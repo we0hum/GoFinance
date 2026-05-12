@@ -90,34 +90,44 @@ func (h *TransactionHandlers) ListTransactions(w http.ResponseWriter, r *http.Re
 	}
 
 	categoryIdStr := r.URL.Query().Get("category_id")
+	limitStr := r.URL.Query().Get("limit")
 
 	var (
-		categoryId int
+		categoryID int
+		limit      int
 		err        error
+		txs        []models.Transaction
 	)
 
 	if categoryIdStr != "" {
-		categoryId, err = strconv.Atoi(categoryIdStr)
+		categoryID, err = strconv.Atoi(categoryIdStr)
 		if err != nil {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 	}
 
-	var (
-		txs []models.Transaction
-	)
+	if limitStr != "" {
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
+	}
+	if limit == 0 {
+		limit = 10
+	}
 
 	if categoryIdStr != "" {
 		txs, err = h.repo.ListByCategory(r.Context(), models.Transaction{
-			CategoryID: categoryId,
+			CategoryID: categoryID,
 		})
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 	} else {
-		txs, err = h.repo.List(r.Context())
+		txs, err = h.repo.List(r.Context(), categoryID, limit)
 		if err != nil {
 			http.Error(w, "Database error: "+err.Error(), http.StatusInternalServerError)
 			return

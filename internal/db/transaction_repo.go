@@ -88,14 +88,18 @@ func (r *TransactionRepo) CreateWithAccountUpdate(ctx context.Context, t models.
 	return tr, nil
 }
 
-func (r *TransactionRepo) List(ctx context.Context) ([]models.Transaction, error) {
+func (r *TransactionRepo) List(ctx context.Context, categoryID, limit int) ([]models.Transaction, error) {
 	var txs []models.Transaction
 
-	err := r.db.SelectContext(ctx, &txs, `
+	query := `
         SELECT id, category_id, amount, note, created_at
         FROM transactions
-        ORDER BY created_at DESC;
-    `)
+        WHERE ($1 = 0 OR category_id = $1)
+        ORDER BY created_at DESC
+		LIMIT $2; 
+    `
+
+	err := r.db.SelectContext(ctx, &txs, query, categoryID, limit)
 
 	return txs, err
 }
